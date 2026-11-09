@@ -1,4 +1,4 @@
--- PaperTrail | PT-DB-BASE-2 | Oracle: modelo, dados e testes da base.
+-- PaperTrail | PT-DB-BASE-3 | Oracle: modelo, dados e testes da base.
 -- Executar como script (F5 no SQL Developer) ou @papertrail.sql no SQLcl/SQL*Plus.
 -- Conta FIAP do próprio integrante; não há credenciais neste arquivo.
 -- Objetos novos PT_; não altera objetos do ClyvoCare. Não é a entrega final.
@@ -191,8 +191,7 @@ CREATE TABLE PT_VERSAO_SERVICO (
 
 PROMPT === 04. Dados ficticios comuns ===
 
--- BEGIN GENERATED FIXTURES
--- Gerado de tools/database/fixtures.json (PT-DB-BASE-2).
+-- Dados de teste canônicos; preservar os mesmos IDs e valores na futura carga MongoDB.
 INSERT INTO PT_CATEGORIA (ID, NOME) VALUES (1, 'Cadastro e documentação');
 INSERT INTO PT_CATEGORIA (ID, NOME) VALUES (2, 'Mobilidade');
 INSERT INTO PT_SERVICO (ID, CATEGORIA_ID, TITULO, DESCRICAO, MUNICIPIO, VERSAO) VALUES (1, 1, 'Cadastro municipal — exemplo fictício', 'Exemplo acadêmico de preparação; não representa exigências de órgão público.', 'Cidade de demonstração', 2);
@@ -230,7 +229,6 @@ INSERT INTO PT_PREPARATIVO (ID, OWNER_SUBJECT, SERVICO_ID, VERSAO_ORIGEM, TITULO
 INSERT INTO PT_VERSAO_SERVICO (SERVICO_ID, VERSAO, ATUALIZADO_EM) VALUES (1, 2, TO_TIMESTAMP_TZ('2026-11-09T12:00:00+00:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM'));
 INSERT INTO PT_VERSAO_SERVICO (SERVICO_ID, VERSAO, ATUALIZADO_EM) VALUES (2, 1, TO_TIMESTAMP_TZ('2026-11-09T12:00:00+00:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM'));
 INSERT INTO PT_VERSAO_SERVICO (SERVICO_ID, VERSAO, ATUALIZADO_EM) VALUES (3, 1, TO_TIMESTAMP_TZ('2026-11-09T12:00:00+00:00', 'YYYY-MM-DD"T"HH24:MI:SSTZH:TZM'));
--- END GENERATED FIXTURES
 COMMIT;
 
 PROMPT === 05. Testes da base, com rollback das alteracoes de teste ===
