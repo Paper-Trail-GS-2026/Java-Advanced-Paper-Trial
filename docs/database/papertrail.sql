@@ -19,7 +19,7 @@ BEGIN
     SELECT COUNT(*) INTO v_objects FROM USER_OBJECTS
     WHERE SUBSTR(OBJECT_NAME, 1, 3) = 'PT_'
        OR SUBSTR(OBJECT_NAME, 1, 6) = 'IX_PT_'
-       OR OBJECT_NAME = 'PKG_PREPARATION';
+       OR OBJECT_NAME IN ('PKG_PREPARATION', 'TRG_PT_ITEM_AUDIT');
     SELECT COUNT(*) INTO v_constraints FROM USER_CONSTRAINTS
     WHERE SUBSTR(CONSTRAINT_NAME, 1, 6) IN ('PK_PT_', 'UQ_PT_', 'CK_PT_', 'FK_PT_');
     IF v_objects + v_constraints > 0 THEN
@@ -524,6 +524,190 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('PKG_PREPARATION: ' || v_checks || ' checks OK; test data rolled back.');
 EXCEPTION WHEN OTHERS THEN
     ROLLBACK TO preparation_package_test;
+    RAISE;
+END;
+/
+ROLLBACK;
+
+PROMPT 08. Audit preparation item changes
+
+CREATE OR REPLACE TRIGGER TRG_PT_ITEM_AUDIT
+AFTER INSERT OR UPDATE OR DELETE ON PT_PREPARATION_ITEM
+FOR EACH ROW
+DECLARE
+    v_operation PT_ITEM_AUDIT.OPERATION%TYPE;
+BEGIN
+    IF INSERTING THEN
+        v_operation := 'INSERT';
+    ELSIF UPDATING THEN
+        v_operation := 'UPDATE';
+    ELSE
+        v_operation := 'DELETE';
+    END IF;
+
+    INSERT INTO PT_ITEM_AUDIT (
+        ITEM_ID, OPERATION, OCCURRED_AT, DATABASE_USER,
+        OLD_PREPARATION_ID, NEW_PREPARATION_ID,
+        OLD_REQUIREMENT_ID, NEW_REQUIREMENT_ID,
+        OLD_TITLE, NEW_TITLE, OLD_REQUIRED, NEW_REQUIRED,
+        OLD_COMPLETED, NEW_COMPLETED
+    ) VALUES (
+        NVL(:NEW.ID, :OLD.ID), v_operation, SYSTIMESTAMP,
+        SYS_CONTEXT('USERENV', 'SESSION_USER'),
+        :OLD.PREPARATION_ID, :NEW.PREPARATION_ID,
+        :OLD.REQUIREMENT_ID, :NEW.REQUIREMENT_ID,
+        :OLD.TITLE, :NEW.TITLE, :OLD.REQUIRED, :NEW.REQUIRED,
+        :OLD.COMPLETED, :NEW.COMPLETED
+    );
+END;
+/
+
+DECLARE
+    v_valid_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_valid_count FROM USER_OBJECTS
+    WHERE OBJECT_NAME = 'TRG_PT_ITEM_AUDIT' AND OBJECT_TYPE = 'TRIGGER' AND STATUS = 'VALID';
+    IF v_valid_count <> 1 THEN
+        FOR compilation_error IN (SELECT LINE, POSITION, TEXT FROM USER_ERRORS
+                                  WHERE NAME = 'TRG_PT_ITEM_AUDIT' AND TYPE = 'TRIGGER' ORDER BY SEQUENCE) LOOP
+            DBMS_OUTPUT.PUT_LINE(compilation_error.LINE || ':' || compilation_error.POSITION || ' ' || compilation_error.TEXT);
+        END LOOP;
+        RAISE_APPLICATION_ERROR(-20996, 'TRG_PT_ITEM_AUDIT failed to compile; check USER_ERRORS.');
+    END IF;
+END;
+/
+
+PROMPT 09. Test item audit
+
+DECLARE
+    v_preparation_id PT_PREPARATION.ID%TYPE;
+    v_item_id PT_PREPARATION_ITEM.ID%TYPE;
+    v_started_at TIMESTAMP WITH TIME ZONE;
+    v_count NUMBER;
+    v_error NUMBER;
+    v_before_preparations NUMBER;
+    v_before_items NUMBER;
+    v_before_audit NUMBER;
+    v_checks PLS_INTEGER := 0;
+
+    PROCEDURE assert_number(p_actual NUMBER, p_expected NUMBER, p_label VARCHAR2) IS
+    BEGIN
+        IF p_actual IS NULL OR p_actual <> p_expected THEN
+            RAISE_APPLICATION_ERROR(-20997, p_label || ': expected ' || p_expected || ', received ' || NVL(TO_CHAR(p_actual), 'NULL'));
+        END IF;
+        v_checks := v_checks + 1;
+    END;
+BEGIN
+    SAVEPOINT item_audit_test;
+    v_started_at := SYSTIMESTAMP;
+    SELECT COUNT(*) INTO v_before_preparations FROM PT_PREPARATION;
+    SELECT COUNT(*) INTO v_before_items FROM PT_PREPARATION_ITEM;
+    SELECT COUNT(*) INTO v_before_audit FROM PT_ITEM_AUDIT;
+
+    PKG_PREPARATION.create_preparation('fixture-audit', 1, 2, 'Audit test', v_preparation_id);
+    INSERT INTO PT_PREPARATION_ITEM (PREPARATION_ID, TITLE, REQUIRED, COMPLETED)
+    VALUES (v_preparation_id, 'Audit item', 1, 0)
+    RETURNING ID INTO v_item_id;
+
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 1, 'One audit row per inserted item');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT
+    WHERE ITEM_ID = v_item_id AND OPERATION = 'INSERT'
+      AND OLD_PREPARATION_ID IS NULL AND OLD_REQUIREMENT_ID IS NULL
+      AND OLD_TITLE IS NULL AND OLD_REQUIRED IS NULL AND OLD_COMPLETED IS NULL
+      AND NEW_PREPARATION_ID = v_preparation_id AND NEW_REQUIREMENT_ID IS NULL
+      AND NEW_TITLE = 'Audit item' AND NEW_REQUIRED = 1 AND NEW_COMPLETED = 0;
+    assert_number(v_count, 1, 'INSERT old and new values');
+
+    UPDATE PT_PREPARATION_ITEM
+    SET REQUIREMENT_ID = 11, TITLE = 'Revised audit item', REQUIRED = 0, COMPLETED = 1
+    WHERE ID = v_item_id;
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 2, 'One audit row per update');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT
+    WHERE ITEM_ID = v_item_id AND OPERATION = 'UPDATE'
+      AND OLD_PREPARATION_ID = v_preparation_id AND OLD_REQUIREMENT_ID IS NULL
+      AND OLD_TITLE = 'Audit item' AND OLD_REQUIRED = 1 AND OLD_COMPLETED = 0
+      AND NEW_PREPARATION_ID = v_preparation_id AND NEW_REQUIREMENT_ID = 11
+      AND NEW_TITLE = 'Revised audit item' AND NEW_REQUIRED = 0 AND NEW_COMPLETED = 1;
+    assert_number(v_count, 1, 'UPDATE old and new values');
+
+    UPDATE PT_PREPARATION_ITEM
+    SET REQUIREMENT_ID = NULL, TITLE = 'Final audit item', REQUIRED = 1, COMPLETED = 0
+    WHERE ID = v_item_id;
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 3, 'Second update adds one audit row');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT
+    WHERE ITEM_ID = v_item_id AND OPERATION = 'UPDATE'
+      AND OLD_PREPARATION_ID = v_preparation_id AND OLD_REQUIREMENT_ID = 11
+      AND OLD_TITLE = 'Revised audit item' AND OLD_REQUIRED = 0 AND OLD_COMPLETED = 1
+      AND NEW_PREPARATION_ID = v_preparation_id AND NEW_REQUIREMENT_ID IS NULL
+      AND NEW_TITLE = 'Final audit item' AND NEW_REQUIRED = 1 AND NEW_COMPLETED = 0;
+    assert_number(v_count, 1, 'UPDATE clears a nullable field');
+
+    v_error := 0;
+    BEGIN
+        UPDATE PT_PREPARATION_ITEM SET COMPLETED = 2 WHERE ID = v_item_id;
+    EXCEPTION WHEN OTHERS THEN
+        v_error := SQLCODE;
+    END;
+    assert_number(v_error, -2290, 'Reject invalid completion state');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 3, 'Rejected update leaves no audit row');
+    SELECT COMPLETED INTO v_count FROM PT_PREPARATION_ITEM WHERE ID = v_item_id;
+    assert_number(v_count, 0, 'Rejected update preserves the item');
+
+    DELETE FROM PT_PREPARATION_ITEM WHERE ID = v_item_id;
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 4, 'DELETE keeps the earlier audit rows');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT
+    WHERE ITEM_ID = v_item_id AND OPERATION = 'DELETE'
+      AND OLD_PREPARATION_ID = v_preparation_id AND OLD_REQUIREMENT_ID IS NULL
+      AND OLD_TITLE = 'Final audit item' AND OLD_REQUIRED = 1 AND OLD_COMPLETED = 0
+      AND NEW_PREPARATION_ID IS NULL AND NEW_REQUIREMENT_ID IS NULL
+      AND NEW_TITLE IS NULL AND NEW_REQUIRED IS NULL AND NEW_COMPLETED IS NULL;
+    assert_number(v_count, 1, 'DELETE old and new values');
+
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT
+    WHERE ITEM_ID = v_item_id AND ID >= 1000
+      AND DATABASE_USER = SYS_CONTEXT('USERENV', 'SESSION_USER')
+      AND OCCURRED_AT BETWEEN v_started_at AND SYSTIMESTAMP;
+    assert_number(v_count, 4, 'Audit ID, session user and timestamp');
+    DELETE FROM PT_PREPARATION WHERE ID = v_preparation_id;
+    SELECT COUNT(*) INTO v_count FROM PT_PREPARATION WHERE ID = v_preparation_id;
+    assert_number(v_count, 0, 'Delete preparation after its item');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 4, 'Preparation deletion preserves audit history');
+
+    ROLLBACK TO item_audit_test;
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 0, 'Rollback removes audit rows');
+
+    -- Roll back while the item still exists, including its update log.
+    PKG_PREPARATION.create_preparation('fixture-audit', 1, 2, 'Audit rollback test', v_preparation_id);
+    INSERT INTO PT_PREPARATION_ITEM (PREPARATION_ID, TITLE)
+    VALUES (v_preparation_id, 'Rollback item')
+    RETURNING ID INTO v_item_id;
+    UPDATE PT_PREPARATION_ITEM SET COMPLETED = 1 WHERE ID = v_item_id;
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 2, 'INSERT and UPDATE share the item transaction');
+    ROLLBACK TO item_audit_test;
+
+    SELECT COUNT(*) INTO v_count FROM PT_PREPARATION WHERE ID = v_preparation_id;
+    assert_number(v_count, 0, 'Preparation rollback');
+    SELECT COUNT(*) INTO v_count FROM PT_PREPARATION_ITEM WHERE ID = v_item_id;
+    assert_number(v_count, 0, 'Item rollback');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT WHERE ITEM_ID = v_item_id;
+    assert_number(v_count, 0, 'INSERT and UPDATE audit rollback');
+    SELECT COUNT(*) INTO v_count FROM PT_PREPARATION;
+    assert_number(v_count, v_before_preparations, 'Original preparation count');
+    SELECT COUNT(*) INTO v_count FROM PT_PREPARATION_ITEM;
+    assert_number(v_count, v_before_items, 'Original item count');
+    SELECT COUNT(*) INTO v_count FROM PT_ITEM_AUDIT;
+    assert_number(v_count, v_before_audit, 'Original audit count');
+    DBMS_OUTPUT.PUT_LINE('TRG_PT_ITEM_AUDIT: ' || v_checks || ' checks OK; test data rolled back.');
+EXCEPTION WHEN OTHERS THEN
+    ROLLBACK TO item_audit_test;
     RAISE;
 END;
 /
