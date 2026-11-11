@@ -1,6 +1,8 @@
 package br.com.fiap.PaperTrail.common.error;
 
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -10,6 +12,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.util.List;
+import java.util.Locale;
 
 @RestControllerAdvice
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
@@ -41,7 +46,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail databaseError(DataIntegrityViolationException exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException constraint && constraint.getConstraintName() != null) {
+                String name = constraint.getConstraintName().toUpperCase(Locale.ROOT);
+                if (List.of("UQ_PT_CATEGORY_NAME", "FK_PT_SERVICE_CATEGORY", "FK_PT_REQUIREMENT_SERVICE", "FK_PT_CHUNK_SERVICE")
+                        .stream().anyMatch(name::contains)) {
+                    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "Catalog data conflicts with existing records.");
+                }
+            }
+        }
         return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to complete the database operation.");
+    }
+
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ProblemDetail invalidSort(PropertyReferenceException exception) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Invalid sort property.");
     }
 
     @ExceptionHandler(Exception.class)
