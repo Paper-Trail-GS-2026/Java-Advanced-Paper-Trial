@@ -739,4 +739,14 @@ BEGIN
 END;
 /
 
+PROMPT 11. Report 1 - Services by category
+
+SELECT category.ID AS CATEGORY_ID,
+       category.NAME AS CATEGORY_NAME,
+       service.ID AS SERVICE_ID,
+       service.TITLE
+FROM PT_SERVICE service
+JOIN PT_CATEGORY category ON category.ID = service.CATEGORY_ID
+ORDER BY category.ID, service.ID;
+
 PROMPT Installation complete.
