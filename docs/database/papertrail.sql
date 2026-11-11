@@ -713,4 +713,30 @@ END;
 /
 ROLLBACK;
 
+PROMPT 10. Preparation progress
+
+DECLARE
+    v_percentage NUMBER;
+    v_status VARCHAR2(7);
+    v_has_rows BOOLEAN := FALSE;
+BEGIN
+    FOR preparation IN (SELECT ID, TITLE FROM PT_PREPARATION ORDER BY ID) LOOP
+        v_has_rows := TRUE;
+        v_percentage := PKG_PREPARATION.completion_percentage(preparation.ID);
+        IF v_percentage = 100 THEN
+            v_status := 'READY';
+        ELSE
+            v_status := 'PENDING';
+        END IF;
+
+        DBMS_OUTPUT.PUT_LINE('Preparation ' || preparation.ID || ' | ' || preparation.TITLE
+            || ' | ' || TO_CHAR(v_percentage, 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''')
+            || '% | ' || v_status);
+    END LOOP;
+    IF NOT v_has_rows THEN
+        DBMS_OUTPUT.PUT_LINE('No preparations found.');
+    END IF;
+END;
+/
+
 PROMPT Installation complete.
