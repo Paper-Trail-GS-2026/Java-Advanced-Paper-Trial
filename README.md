@@ -117,12 +117,19 @@ Cidadãos e gestores podem consultar o catálogo. As operações de criação, e
 | POST | `/services` | Cria um serviço |
 | PUT | `/services/{id}` | Atualiza um serviço e sua versão |
 | DELETE | `/services/{id}` | Exclui um serviço sem vínculos |
+| GET | `/services/{serviceId}/requirements` | Lista os requisitos do serviço |
+| GET | `/services/{serviceId}/requirements/{id}` | Consulta um requisito |
+| POST | `/services/{serviceId}/requirements` | Cria um requisito |
+| PUT | `/services/{serviceId}/requirements/{id}` | Atualiza um requisito |
+| DELETE | `/services/{serviceId}/requirements/{id}` | Exclui um requisito |
 | GET | `/services/{id}/requirements-snapshot` | Retorna versão e requisitos para o .NET |
 | POST | `/services/{id}/guidance` | Responde uma pergunta com base nas fontes |
 
 ### Catálogo
 
 Para cadastrar uma categoria, informe `name`. No cadastro de um serviço, informe `categoryId`, `title`, `description` e `cityName`. As listagens aceitam `page`, `size` e `sort`; a primeira página é 0, com até 100 registros por página.
+
+Um requisito recebe `title`, `required` e `sourceUrl`. A criação, edição ou exclusão de um requisito incrementa a versão do serviço, que acompanha a cópia dos requisitos enviada ao .NET.
 
 ### Orientação com fontes
 
@@ -147,3 +154,11 @@ env -u OPENAI_API_KEY ./gradlew test
 ```
 
 Os testes usam H2 e chaves RSA temporárias. Os testes com IA real são habilitados quando `OPENAI_API_KEY` está definida.
+
+## CI e publicação
+
+O arquivo [azure-pipeline.yml](azure-pipeline.yml) define as etapas de CI e Release. O merge por PR na `main` aciona o build, os testes e a geração do ZIP. A Release baixa esse mesmo artefato, publica no App Service e verifica a resposta da API. As chamadas reais de IA ficam desativadas no CI.
+
+A conexão `papertrail-azure` usa identidade federada. As chaves RSA e a configuração do banco permanecem no App Service. O script de provisionamento também cria a identidade dos pipelines; `PIPELINE_FEDERATION_ISSUER` e `PIPELINE_FEDERATION_SUBJECT` recebem os valores fornecidos pela conexão do Azure DevOps para configurar a federação.
+
+Os pipelines ficam em <https://dev.azure.com/RM561584/PaperTrail-GS-2026-2/_build>.
