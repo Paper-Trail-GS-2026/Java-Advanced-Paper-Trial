@@ -28,7 +28,7 @@ public class Requirement {
 
     @Convert(converter = NumericBooleanConverter.class)
     @JdbcTypeCode(SqlTypes.NUMERIC)
-    @Column(name = "REQUIRED", nullable = false, columnDefinition = "NUMBER(1)")
+    @Column(name = "REQUIRED", nullable = false, precision = 1, scale = 0)
     private boolean required = true;
 
     @Column(name = "SOURCE_URL", nullable = false, length = 2048)
