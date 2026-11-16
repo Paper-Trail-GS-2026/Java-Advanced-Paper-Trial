@@ -59,7 +59,7 @@ class RetrievalEvaluationTest {
             return "resposta de teste";
         };
         GuidanceService service = new GuidanceService(EvaluationSupport.inMemoryRepository(corpus),
-                new LexicalRetriever(new GuidanceProperties(3, 3000, 0.34)), capturing);
+                EvaluationSupport.inMemoryCatalog(), new LexicalRetriever(new GuidanceProperties(3, 3000, 0.34)), capturing);
 
         int status = 200;
         GuidanceResponse response = null;

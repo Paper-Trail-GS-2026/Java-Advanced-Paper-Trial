@@ -9,6 +9,7 @@ import br.com.fiap.PaperTrail.guidance.entity.GuidanceChunk;
 import br.com.fiap.PaperTrail.guidance.repository.GuidanceChunkRepository;
 import br.com.fiap.PaperTrail.guidance.retrieval.LexicalRetriever;
 import br.com.fiap.PaperTrail.guidance.service.GuidanceService;
+import br.com.fiap.PaperTrail.service.CatalogReader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /** Testes unitários: o modelo é mockado e isso NÃO comprova a integração com a OpenAI. */
@@ -33,6 +35,9 @@ class GuidanceServiceTest {
 
     @Mock
     private GuidanceChunkRepository repository;
+
+    @Mock
+    private CatalogReader catalog;
 
     private GuidanceModel model;
     private GuidanceService service;
@@ -46,12 +51,13 @@ class GuidanceServiceTest {
     @BeforeEach
     void setUp() {
         model = mock(GuidanceModel.class);
-        service = new GuidanceService(repository, new LexicalRetriever(new GuidanceProperties(3, 3000, 0.34)), model);
+        service = new GuidanceService(repository, catalog, new LexicalRetriever(new GuidanceProperties(3, 3000, 0.34)), model);
     }
 
     @Test
     void semTrechoRelevanteAbstemSeSemChamarModelo() {
-        when(repository.findByServiceId(1L)).thenReturn(List.of(chunk(1, 1, "Documento de identificação fictício.")));
+        when(catalog.currentVersion(1L)).thenReturn(1L);
+        when(repository.findByServiceIdAndVersion(1L, 1L)).thenReturn(List.of(chunk(1, 1, "Documento de identificação fictício.")));
 
         GuidanceResponse r = service.ask(1L, "Qual o horário do rodízio?");
 
@@ -62,14 +68,16 @@ class GuidanceServiceTest {
 
     @Test
     void servicoSemTrechosAbstem() {
-        when(repository.findByServiceId(9L)).thenReturn(List.of());
+        when(catalog.currentVersion(9L)).thenReturn(1L);
+        when(repository.findByServiceIdAndVersion(9L, 1L)).thenReturn(List.of());
         assertTrue(service.ask(9L, "Qual documento preciso?").insufficientEvidence());
         verify(model, never()).answer(any(), any());
     }
 
     @Test
     void fontesVemDosTrechosRecuperadosENaoDoModelo() {
-        when(repository.findByServiceId(1L)).thenReturn(List.of(chunk(1, 1, "Documento de identificação fictício.")));
+        when(catalog.currentVersion(1L)).thenReturn(1L);
+        when(repository.findByServiceIdAndVersion(1L, 1L)).thenReturn(List.of(chunk(1, 1, "Documento de identificação fictício.")));
         when(model.answer(any(), any())).thenReturn("Segundo a fonte [1], leve identificação. Veja https://inventada.example/x");
 
         GuidanceResponse r = service.ask(1L, "Qual documento de identificação preciso?");
@@ -80,20 +88,22 @@ class GuidanceServiceTest {
     }
 
     @Test
-    void usaSomenteTrechosDaMaiorVersao() {
-        when(repository.findByServiceId(1L)).thenReturn(List.of(
-                chunk(1, 1, "Documento antigo de identificação."),
+    void consultaTrechosDaVersaoAtualDoCatalogo() {
+        when(catalog.currentVersion(1L)).thenReturn(2L);
+        when(repository.findByServiceIdAndVersion(1L, 2L)).thenReturn(List.of(
                 chunk(2, 2, "Documento novo de identificação.")));
         when(model.answer(any(), any())).thenReturn("ok");
 
         GuidanceResponse r = service.ask(1L, "documento de identificação");
 
         assertEquals(List.of("https://example.invalid/2"), r.sources().stream().map(GuidanceResponse.Source::sourceUrl).toList());
+        verify(repository).findByServiceIdAndVersion(1L, 2L);
     }
 
     @Test
     void falhaDoModeloDevolve503() {
-        when(repository.findByServiceId(1L)).thenReturn(List.of(chunk(1, 1, "Documento de identificação fictício.")));
+        when(catalog.currentVersion(1L)).thenReturn(1L);
+        when(repository.findByServiceIdAndVersion(1L, 1L)).thenReturn(List.of(chunk(1, 1, "Documento de identificação fictício.")));
         when(model.answer(any(), any())).thenThrow(new GuidanceModelException("timeout"));
 
         ResponseStatusException e = assertThrows(ResponseStatusException.class,
@@ -101,6 +111,16 @@ class GuidanceServiceTest {
 
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, e.getStatusCode());
         assertFalse(e.getReason().contains("timeout"));
+    }
+
+    @Test
+    void servicoInexistenteDevolve404SemConsultarTrechosOuModelo() {
+        when(catalog.currentVersion(99L)).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found."));
+
+        var exception = assertThrows(ResponseStatusException.class, () -> service.ask(99L, "Qual documento preciso?"));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verifyNoInteractions(repository, model);
     }
 
     @Test

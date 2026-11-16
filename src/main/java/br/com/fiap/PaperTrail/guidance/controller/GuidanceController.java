@@ -27,6 +27,7 @@ public class GuidanceController {
             @ApiResponse(responseCode = "200", description = "Resposta com fontes, ou abstenção (insufficientEvidence=true)"),
             @ApiResponse(responseCode = "400", description = "Pergunta inválida"),
             @ApiResponse(responseCode = "401", description = "Não autenticado"),
+            @ApiResponse(responseCode = "404", description = "Serviço não encontrado"),
             @ApiResponse(responseCode = "503", description = "Modelo de IA indisponível")
     })
     public GuidanceResponse ask(@PathVariable @Positive Long serviceId,

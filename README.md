@@ -112,6 +112,19 @@ O incremento publica `ServiceVersionChanged`, um evento local do Spring com
 da transação. O transporte por broker e o tratamento de falhas de publicação
 continuam pendentes.
 
+## Orientação com fontes
+
+`POST /services/{id}/guidance` recebe `{"question":"Quais documentos preciso?"}`
+e exige autenticação como cidadão ou gestor.
+
+A recuperação consulta a versão atual do serviço no catálogo e busca somente
+os trechos dessa versão. Textos de versões anteriores ou futuras ficam fora da
+resposta. Ao atualizar o catálogo, revise e cadastre as fontes na nova versão.
+
+Se não houver trechos relevantes na versão atual, a resposta traz
+`insufficientEvidence=true` e o modelo não é chamado. Serviço inexistente retorna
+404; falha do modelo retorna 503. As fontes da resposta vêm dos trechos recuperados.
+
 ## Testes
 
 ```bash

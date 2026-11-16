@@ -57,7 +57,7 @@ class LiveEvaluationTest {
     Stream<DynamicTest> avaliaFluxoCompletoComIaReal() {
         List<GuidanceChunk> corpus = EvaluationSupport.loadCorpus();
         GuidanceService service = new GuidanceService(EvaluationSupport.inMemoryRepository(corpus),
-                new LexicalRetriever(new GuidanceProperties(3, 3000, 0.34)), model);
+                EvaluationSupport.inMemoryCatalog(), new LexicalRetriever(new GuidanceProperties(3, 3000, 0.34)), model);
         List<Result> results = new ArrayList<>();
         for (EvalCase c : EvaluationSupport.loadDataset()) {
             if (c.expectedHttpStatus() == 503) {
@@ -78,6 +78,7 @@ class LiveEvaluationTest {
         long start = System.nanoTime();
         List<String> problems = new ArrayList<>();
         String answer = "";
+        int status = 200;
         try {
             GuidanceResponse r = service.ask(c.serviceId(), c.question());
             answer = r.answer();
@@ -102,7 +103,10 @@ class LiveEvaluationTest {
                 }
             }
         } catch (ResponseStatusException e) {
-            problems.add("HTTP " + e.getStatusCode().value() + " (modelo indisponível ou recusou a chamada)");
+            status = e.getStatusCode().value();
+        }
+        if (status != c.expectedHttpStatus()) {
+            problems.add("HTTP " + status + " (esperado " + c.expectedHttpStatus() + ")");
         }
         long millis = (System.nanoTime() - start) / 1_000_000;
         return new Result(c, problems.isEmpty(), c.id() + ": " + String.join("; ", problems), millis, answer);

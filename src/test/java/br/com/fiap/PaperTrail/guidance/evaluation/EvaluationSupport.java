@@ -2,6 +2,9 @@ package br.com.fiap.PaperTrail.guidance.evaluation;
 
 import br.com.fiap.PaperTrail.guidance.entity.GuidanceChunk;
 import br.com.fiap.PaperTrail.guidance.repository.GuidanceChunkRepository;
+import br.com.fiap.PaperTrail.service.CatalogReader;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -11,6 +14,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -19,6 +23,7 @@ import static org.mockito.Mockito.when;
 /** Carrega o corpus FICTÍCIO e o dataset de avaliação versionados em src/test/resources/guidance. */
 final class EvaluationSupport {
     private static final JsonMapper MAPPER = JsonMapper.builder().build();
+    private static final Map<Long, Long> CATALOG_VERSIONS = Map.of(1L, 2L, 2L, 1L, 3L, 1L);
 
     private EvaluationSupport() {
     }
@@ -52,11 +57,20 @@ final class EvaluationSupport {
     /** Substitui APENAS o banco (Oracle) por memória; a recuperação e o serviço são os reais. */
     static GuidanceChunkRepository inMemoryRepository(List<GuidanceChunk> corpus) {
         GuidanceChunkRepository repository = mock(GuidanceChunkRepository.class);
-        when(repository.findByServiceId(anyLong())).thenAnswer(inv -> {
+        when(repository.findByServiceIdAndVersion(anyLong(), anyLong())).thenAnswer(inv -> {
             Long serviceId = inv.getArgument(0);
-            return corpus.stream().filter(c -> c.getServiceId().equals(serviceId)).toList();
+            Long version = inv.getArgument(1);
+            return corpus.stream().filter(c -> c.getServiceId().equals(serviceId) && c.getVersion().equals(version)).toList();
         });
         return repository;
+    }
+
+    static CatalogReader inMemoryCatalog() {
+        return serviceId -> {
+            Long version = CATALOG_VERSIONS.get(serviceId);
+            if (version == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found.");
+            return version;
+        };
     }
 
     static Long chunkIdByUrl(List<GuidanceChunk> corpus, String url) {

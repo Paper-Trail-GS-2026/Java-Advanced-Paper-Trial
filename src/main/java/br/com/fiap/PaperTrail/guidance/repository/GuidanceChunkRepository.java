@@ -13,5 +13,5 @@ public interface GuidanceChunkRepository extends JpaRepository<GuidanceChunk, Lo
 
     Optional<GuidanceChunk> findByIdAndServiceId(Long id, Long serviceId);
 
-    List<GuidanceChunk> findByServiceId(Long serviceId);
+    List<GuidanceChunk> findByServiceIdAndVersion(Long serviceId, Long version);
 }

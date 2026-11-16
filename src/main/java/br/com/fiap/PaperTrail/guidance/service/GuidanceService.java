@@ -7,14 +7,13 @@ import br.com.fiap.PaperTrail.guidance.entity.GuidanceChunk;
 import br.com.fiap.PaperTrail.guidance.repository.GuidanceChunkRepository;
 import br.com.fiap.PaperTrail.guidance.retrieval.LexicalRetriever;
 import br.com.fiap.PaperTrail.guidance.retrieval.LexicalRetriever.ScoredChunk;
+import br.com.fiap.PaperTrail.service.CatalogReader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -26,12 +25,13 @@ public class GuidanceService {
                     + "Confirme diretamente com o órgão responsável pelo serviço.";
 
     private final GuidanceChunkRepository chunkRepository;
+    private final CatalogReader catalog;
     private final LexicalRetriever retriever;
     private final GuidanceModel model;
 
-    // sem @Transactional ao redor da chamada ao modelo: não segura conexão do banco durante a espera da IA
     public GuidanceResponse ask(Long serviceId, String question) {
-        List<GuidanceChunk> candidates = latestVersionChunks(serviceId);
+        long version = catalog.currentVersion(serviceId);
+        List<GuidanceChunk> candidates = chunkRepository.findByServiceIdAndVersion(serviceId, version);
         List<ScoredChunk> retrieved = retriever.retrieve(question, candidates);
 
         if (retrieved.isEmpty()) {
@@ -60,11 +60,4 @@ public class GuidanceService {
         return new GuidanceResponse(answer, responseSources, false);
     }
 
-    @Transactional(readOnly = true)
-    List<GuidanceChunk> latestVersionChunks(Long serviceId) {
-        List<GuidanceChunk> all = chunkRepository.findByServiceId(serviceId);
-        // TODO(catálogo): usar a versão atual do serviço quando a porta de leitura do Orlando existir
-        long latest = all.stream().map(GuidanceChunk::getVersion).max(Comparator.naturalOrder()).orElse(0L);
-        return all.stream().filter(c -> c.getVersion() == latest).toList();
-    }
 }
