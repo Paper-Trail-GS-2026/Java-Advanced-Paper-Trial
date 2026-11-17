@@ -5,3 +5,8 @@ services:
       - 'ORACLE_PASSWORD=secret'
     ports:
       - '1521'
+  rabbitmq:
+    image: 'rabbitmq:4-management'
+    ports:
+      - '5672:5672'
+      - '15672:15672'
