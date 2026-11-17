@@ -162,3 +162,9 @@ O arquivo [azure-pipeline.yml](azure-pipeline.yml) define as etapas de CI e Rele
 A conexão `papertrail-azure` usa identidade federada. As chaves RSA e a configuração do banco permanecem no App Service. O script de provisionamento também cria a identidade dos pipelines; `PIPELINE_FEDERATION_ISSUER` e `PIPELINE_FEDERATION_SUBJECT` recebem os valores fornecidos pela conexão do Azure DevOps para configurar a federação.
 
 Os pipelines ficam em <https://dev.azure.com/RM561584/PaperTrail-GS-2026-2/_build>.
+
+## Arquitetura e entrega
+
+![Arquitetura do PaperTrail: Azure Boards e Repos, CI/CD, APIs Java e .NET e Azure SQL](docs/devops/arquitetura.svg)
+
+A identificação do grupo, os acessos e as evidências de publicação estão em [docs/devops/PaperTrail_rm561584.pdf](docs/devops/PaperTrail_rm561584.pdf). O material distingue a versão publicada das alterações em revisão.
