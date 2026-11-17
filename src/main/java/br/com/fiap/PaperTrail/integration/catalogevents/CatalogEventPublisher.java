@@ -24,7 +24,6 @@ public class CatalogEventPublisher {
         this.properties = properties;
     }
 
-     @throws
     public void publish(ServiceVersionChanged event) {
         Message message = MessageBuilder.withBody(CatalogEventMessage.toBytes(event))
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
