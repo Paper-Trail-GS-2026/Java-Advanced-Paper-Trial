@@ -13,10 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Recuperação lexical por BM25 simples sobre os trechos já filtrados por serviço/versão.
- * Sem embeddings (proposta aprovada; confirmar com o professor).
- */
+/** Ordena os trechos da versão atual por BM25. */
 @Component
 @RequiredArgsConstructor
 public class LexicalRetriever {
@@ -78,7 +75,7 @@ public class LexicalRetriever {
                 break;
             }
             int size = scored.chunk().getContent().length();
-            if (!selected.isEmpty() && usedChars + size > properties.maxContextChars()) {
+            if (usedChars + size > properties.maxContextChars()) {
                 continue;
             }
             selected.add(scored);
