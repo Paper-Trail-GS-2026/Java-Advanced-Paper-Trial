@@ -4,6 +4,11 @@ O PaperTrail é um projeto CitizenTech da Global Solution da FIAP voltado à pre
 
 Este repositório contém a API Java, responsável pela autenticação, pelo catálogo e pelas respostas baseadas nas fontes cadastradas. A API .NET consulta os requisitos e a versão de cada serviço para criar os preparativos. O token emitido no login permite acessar as duas APIs.
 
+## Vídeos
+
+- Pitch do projeto: <https://www.youtube.com/watch?v=ryRj5UnI-0o>
+- Demonstração de DevOps: <https://www.youtube.com/watch?v=CRfGrDgIHB8>
+
 ## Aplicação publicada
 
 - Swagger Java: <https://papertrail-java-rm561584.azurewebsites.net/swagger-ui/index.html>
