@@ -1,0 +1,64 @@
+{
+  "reviewedAt": "2026-11-18T00:00:00Z",
+  "category": "Atendimento ao cidadão",
+  "services": [
+    {
+      "key": "cin-sp",
+      "title": "Primeira via da CIN em SP — adulto nascido no Brasil",
+      "description": "Preparação documental para adultos brasileiros nascidos no Brasil. Situações de menores, naturalização e nascimento no exterior exigem consulta específica.",
+      "cityName": "São Paulo — abrangência estadual",
+      "sourceTitle": "Serviços SP — Carteira de Identidade Nacional",
+      "sourceUrl": "https://servicos.sp.gov.br/fcarta/d97c3844-a2d9-4c9e-b364-cb4feb26a1fb",
+      "requirements": [
+        {"title": "Certidão correspondente ao estado civil atual, original ou autenticada, com cópia simples", "required": true},
+        {"title": "Número do CPF ou documento oficial que o informe", "required": true},
+        {"title": "Agendamento pessoal no Poupatempo", "required": true}
+      ],
+      "chunks": [
+        {"topic": "Documentos e certidões", "content": "Na primeira CIN de adulto brasileiro nascido no Brasil, a certidão depende do estado civil: nascimento para solteiros; casamento atualizado nos demais casos. Levar original ou autenticada, mais cópia simples."},
+        {"topic": "CPF", "content": "O cidadão deve informar seu CPF, podendo apresentar documento oficial que contenha o número. Certidões digitais precisam passar por validação eletrônica."},
+        {"topic": "Agendamento e atendimento", "content": "A marcação é individual e realizada pelos canais do Poupatempo. Depois, o cidadão comparece pessoalmente ao atendimento escolhido com a documentação."},
+        {"topic": "Gratuidade", "content": "A emissão inicial da CIN e o agendamento não têm cobrança de taxa. Essa informação se refere à primeira emissão, não a qualquer segunda via."}
+      ]
+    },
+    {
+      "key": "cadunico",
+      "title": "Cadastro Único — preparação da documentação familiar",
+      "description": "Orientações gerais para famílias. Grupos com procedimentos diferenciados e famílias unipessoais devem confirmar o atendimento específico com o município.",
+      "cityName": "Brasil — atendimento no município da família",
+      "sourceTitle": "MDS — Cadastro Único",
+      "sourceUrl": "https://www.gov.br/mds/pt-br/acoes-e-programas/cadastro-unico/Cadastro-unico/",
+      "requirements": [
+        {"title": "CPF dos integrantes da família", "required": true},
+        {"title": "Conferir a identificação do responsável familiar no posto de atendimento", "required": true},
+        {"title": "Comprovante de residência, se disponível", "required": false}
+      ],
+      "chunks": [
+        {"topic": "Documentação", "content": "Os documentos para o Cadastro Único incluem o CPF de cada pessoa da família, identificação do responsável e comprovante de endereço quando disponível. Procedimentos diferenciados devem ser confirmados no posto."},
+        {"topic": "Local e custo", "content": "O cadastramento não tem cobrança e ocorre presencialmente em posto municipal, como CRAS ou unidade de cadastramento. O endereço e a organização do atendimento são municipais."},
+        {"topic": "Cadastro e benefícios", "content": "A inscrição identifica a família para programas sociais, mas não significa aprovação automática de benefício. Cada programa verifica suas próprias condições."},
+        {"topic": "Quem mora sozinho", "content": "Quem vive sozinho pode ser cadastrado como família unipessoal. Para benefícios federais de transferência de renda, a entrevista costuma ocorrer no domicílio, com exceções previstas nas regras."}
+      ]
+    },
+    {
+      "key": "cnh-sp",
+      "title": "Renovação da CNH A/B sem EAR em SP",
+      "description": "Recorte para categorias A/B sem atividade remunerada. Outros casos precisam de requisitos adicionais e de confirmação no Detran-SP.",
+      "cityName": "São Paulo — abrangência estadual",
+      "sourceTitle": "Detran-SP — Renovar CNH",
+      "sourceUrl": "https://servicos.sp.gov.br/fcarta/F8D2DBE7-66BE-4AEC-9B0F-25912922D566",
+      "requirements": [
+        {"title": "Número do CPF", "required": true},
+        {"title": "Números de registro e do espelho da CNH", "required": true},
+        {"title": "Exame médico de aptidão física e mental em clínica credenciada", "required": true}
+      ],
+      "chunks": [
+        {"topic": "Documentos e identificação", "content": "Para solicitar a renovação, a página do Detran-SP relaciona CPF, registro da habilitação e número do espelho. O início pela internet utiliza autenticação gov.br."},
+        {"topic": "Exame médico", "content": "A renovação inclui exame de aptidão física e mental em clínica credenciada, conforme agendamento. O pagamento do exame é realizado ao profissional."},
+        {"topic": "Categorias e EAR", "content": "O exame toxicológico é indicado para categorias C, D e E. A avaliação psicológica se aplica ao exercício de atividade remunerada. Esses casos ficam fora do recorte A/B sem EAR."},
+        {"topic": "Formato e cobrança", "content": "A versão digital da CNH é gratuita. A versão impressa envolve emissão e postagem. Essa gratuidade digital não elimina a cobrança do exame médico."},
+        {"topic": "Etapas", "content": "O pedido permite informar os dados pela internet, escolher o formato e agendar exames. Após o processo, acompanha-se a emissão e, quando houver documento físico, a entrega."}
+      ]
+    }
+  ]
+}

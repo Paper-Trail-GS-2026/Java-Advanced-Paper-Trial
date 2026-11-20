@@ -1,0 +1,13 @@
+PaperTrail - Java Advanced - Global Solution 2026/2
+
+Repositório público:
+https://github.com/Paper-Trail-GS-2026/Java-Advanced-Paper-Trial
+
+Vídeo pitch:
+https://www.youtube.com/watch?v=ryRj5UnI-0o
+
+Swagger Java:
+https://papertrail-java-rm561584.azurewebsites.net/swagger-ui/index.html
+
+Swagger .NET:
+https://papertrail-dotnet-rm561584.azurewebsites.net/swagger

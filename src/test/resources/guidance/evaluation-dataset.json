@@ -6,7 +6,7 @@
   {"id": "A5", "category": "answerable", "serviceId": 1, "question": "O protocolo anterior é obrigatório?", "expectedChunkIds": [104]},
   {"id": "A6", "category": "answerable", "serviceId": 2, "question": "O que é a informação complementar?", "expectedChunkIds": [203]},
 
-  {"id": "P1", "category": "paraphrase", "serviceId": 1, "question": "Que papel com foto devo apresentar para me cadastrar?", "expectedChunkIds": [102], "knownLimitation": "Paráfrase quase sem termos em comum com o trecho (só 'foto'); a busca lexical não recupera. Embeddings ou sinônimos resolveriam, mas não foram adotados (proposta lexical aprovada)."},
+  {"id": "P1", "category": "paraphrase", "serviceId": 1, "question": "Que papel com foto devo apresentar para me cadastrar?", "expectedChunkIds": [102]},
   {"id": "P2", "category": "paraphrase", "serviceId": 1, "question": "Quantos dias de validade tem o comprovante de endereço?", "expectedChunkIds": [103]},
   {"id": "P3", "category": "paraphrase", "serviceId": 2, "question": "Tenho que assinar o formulário antes do atendimento?", "expectedChunkIds": [202]},
   {"id": "P4", "category": "paraphrase", "serviceId": 3, "question": "Qual documento levo no atendimento cadastral?", "expectedChunkIds": [301]},

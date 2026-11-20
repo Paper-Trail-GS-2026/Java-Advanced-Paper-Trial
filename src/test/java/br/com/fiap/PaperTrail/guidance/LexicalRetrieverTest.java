@@ -56,7 +56,23 @@ class LexicalRetrieverTest {
         assertTrue(all.size() <= 2);
         var limited = new LexicalRetriever(new GuidanceProperties(3, 10, 0.34))
                 .retrieve("fictício exemplo", corpus);
-        assertEquals(1, limited.size()); // sempre mantém o melhor; os demais estouram o limite
+        assertTrue(limited.isEmpty());
+    }
+
+    @Test
+    void encontraDocumentoComFotoNaPerguntaInformal() {
+        var result = retriever.retrieve("Que papel com foto devo apresentar para me cadastrar?",
+                List.of(chunk(4, "Documentação", "O cadastro exige documento com foto.")));
+        assertEquals(4L, result.get(0).chunk().getId());
+    }
+
+    @Test
+    void ignoraTrechoGrandeEUsaOutroQueCabeNoContexto() {
+        var limited = new LexicalRetriever(new GuidanceProperties(3, 40, 0.34));
+        var result = limited.retrieve("documento",
+                List.of(chunk(4, "Documento", "Documento " + "x".repeat(100)),
+                        chunk(5, "Documento", "Documento com foto.")));
+        assertEquals(List.of(5L), result.stream().map(item -> item.chunk().getId()).toList());
     }
 
     @Test

@@ -4,6 +4,11 @@ O PaperTrail é um projeto CitizenTech da Global Solution da FIAP voltado à pre
 
 Este repositório contém a API Java, responsável pela autenticação, pelo catálogo e pelas respostas baseadas nas fontes cadastradas. A API .NET consulta os requisitos e a versão de cada serviço para criar os preparativos. O token emitido no login permite acessar as duas APIs.
 
+## Vídeos
+
+- Pitch do projeto: <https://www.youtube.com/watch?v=ryRj5UnI-0o>
+- Demonstração de DevOps: <https://www.youtube.com/watch?v=CRfGrDgIHB8>
+
 ## Aplicação publicada
 
 - Swagger Java: <https://papertrail-java-rm561584.azurewebsites.net/swagger-ui/index.html>
@@ -124,6 +129,10 @@ Cidadãos e gestores podem consultar o catálogo. As operações de criação, e
 | DELETE | `/services/{serviceId}/requirements/{id}` | Exclui um requisito |
 | GET | `/services/{id}/requirements-snapshot` | Retorna versão e requisitos para o .NET |
 | POST | `/services/{id}/guidance` | Responde uma pergunta com base nas fontes |
+| GET | `/services/{id}/guidance-chunks` | Lista os trechos cadastrados pelo gestor |
+| POST | `/services/{id}/guidance-chunks` | Cadastra um trecho e sua fonte |
+| PUT | `/services/{id}/guidance-chunks/{chunkId}` | Atualiza um trecho |
+| DELETE | `/services/{id}/guidance-chunks/{chunkId}` | Exclui um trecho |
 
 ### Catálogo
 
@@ -135,7 +144,27 @@ Um requisito recebe `title`, `required` e `sourceUrl`. A criação, edição ou 
 
 Envie uma pergunta no formato `{"question":"Quais documentos preciso?"}` para a rota de orientação do serviço. O RAG consulta as fontes da versão atual para buscar os trechos que serão usados na resposta. Se não encontrar trechos relevantes, retorna `insufficientEvidence=true` sem chamar o modelo.
 
-O provedor usa a variável `OPENAI_API_KEY`. A rota retorna 404 quando o serviço não existe e 503 se houver falha na chamada ao modelo. As fontes oficiais ainda precisam ser cadastradas e revisadas.
+O provedor usa a variável `OPENAI_API_KEY`. A rota retorna 404 quando o serviço não existe e 503 se houver falha na chamada ao modelo. A recuperação usa BM25 sobre os textos cadastrados, com normalização de acentos e termos comuns; não usa embeddings nem treinamento do modelo.
+
+A carga de referência está em [official-services.json](src/main/resources/guidance/official-services.json). Ela contém fontes oficiais para primeira CIN de adulto nascido no Brasil em SP, Cadastro Único e renovação da CNH A/B sem EAR em SP. Cada serviço informa seu recorte e a origem das orientações. Os exemplos fictícios da carga de Database continuam separados desses serviços.
+
+Para carregar ou atualizar essas fontes, faça login com um gestor e use o token na variável abaixo. O script reaproveita serviços, requisitos e trechos existentes pelo nome, sem apagar dados:
+
+```bash
+read -r -s -p "Token MANAGER: " PAPERTRAIL_MANAGER_TOKEN
+export PAPERTRAIL_MANAGER_TOKEN
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/load-guidance.ps1 \
+  -BaseUrl https://papertrail-java-rm561584.azurewebsites.net
+unset PAPERTRAIL_MANAGER_TOKEN
+```
+
+O script imprime os IDs e as versões para uso no Swagger e no Mobile. A revisão de uma exigência incrementa a versão do serviço; os trechos precisam acompanhar essa versão para continuar disponíveis na orientação.
+
+### Eventos do catálogo
+
+As alterações de serviços e requisitos geram eventos de versão após o commit. Com `CATALOG_EVENTS_ENABLED=true`, o Java publica no RabbitMQ usando `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD`, `RABBITMQ_VHOST` e `RABBITMQ_SSL`. A exchange é `papertrail.catalog`, a routing key é `catalog.service.updated` e a fila é `papertrail.dotnet.catalog-version`.
+
+O .NET consome esses eventos para sinalizar preparativos desatualizados. A publicação exige confirmação do broker; a reconciliação reenvia as versões atuais periodicamente para recuperar falhas de envio. O conteúdo pessoal dos preparativos é preservado.
 
 ## Banco e publicação
 
@@ -155,6 +184,12 @@ env -u OPENAI_API_KEY ./gradlew test
 
 Os testes usam H2 e chaves RSA temporárias. Os testes com IA real são habilitados quando `OPENAI_API_KEY` está definida.
 
+A avaliação das fontes oficiais pode ser executada com `./gradlew test --tests '*OfficialSourcesLiveTest' --rerun-tasks`. Ela chama a OpenAI real, usa os textos versionados em memória e gera `build/reports/guidance-official-live.json` com os resultados e as latências. A validação HTTP com persistência e autenticação é feita separadamente.
+
+## Uso de IA no desenvolvimento
+
+Foram usadas ferramentas de IA para apoiar implementação, testes e documentação. O grupo revisa o código e os dados e responde pelas decisões e pelos resultados apresentados.
+
 ## CI e publicação
 
 O arquivo [azure-pipeline.yml](azure-pipeline.yml) define as etapas de CI e Release. O merge por PR na `main` aciona o build, os testes e a geração do ZIP. A Release baixa esse mesmo artefato, publica no App Service e verifica a resposta da API. As chamadas reais de IA ficam desativadas no CI.
@@ -165,6 +200,6 @@ Os pipelines ficam em <https://dev.azure.com/RM561584/PaperTrail-GS-2026-2/_buil
 
 ## Arquitetura e entrega
 
-![Arquitetura do PaperTrail: Azure Boards e Repos, CI/CD, APIs Java e .NET e Azure SQL](docs/devops/arquitetura.svg)
+![Arquitetura do PaperTrail: CI/CD, APIs Java e .NET, RabbitMQ, Azure SQL e OpenAI](docs/devops/arquitetura.svg)
 
-A identificação do grupo, os acessos e as evidências de publicação estão em [docs/devops/PaperTrail_rm561584.pdf](docs/devops/PaperTrail_rm561584.pdf). O material distingue a versão publicada das alterações em revisão.
+A identificação do grupo, os acessos e as evidências de publicação estão em [docs/devops/PaperTrail_rm561584.pdf](docs/devops/PaperTrail_rm561584.pdf).
